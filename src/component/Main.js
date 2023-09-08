@@ -33,7 +33,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
-import { collection, addDoc, getDocs, where, query } from "firebase/firestore";
+import { collection, addDoc, getDocs, where, query,doc, getDoc, setDoc } from "firebase/firestore";
 
 function Main() {
     const [user] = useAuthState(auth);
@@ -51,32 +51,46 @@ function Main() {
 
     const addTodo = async (e) => {
         e.preventDefault();
-
+      
         try {
-            const user = auth.currentUser; // Assuming you have an authentication system set up
-            if (!user) {
-                console.error("User is not authenticated");
-                return;
-            }
-
-            const userData = {
-                age: age,
-                username: username,
-                country: country,
-                uid: user.uid, // Add the user's UID to the document data
-            };
-
-            const docRef = await addDoc(collection(db, "users"), userData);
-            console.log("Document written with ID: ", docRef.id);
-
-            // Store the submitted data and set the form submission flag to true
-            setSubmittedData(userData);
-            setIsFormSubmitted(true); // Set isFormSubmitted to true after successful submission
-            fetchPost();
+          const user = auth.currentUser; // Assuming you have an authentication system set up
+          if (!user) {
+            console.error("User is not authenticated");
+            return;
+          }
+      
+          const userData = {
+            age: age,
+            username: username,
+            country: country,
+            uid: user.uid, // Add the user's UID to the document data
+          };
+      
+          // Reference to the document based on the user's UID
+          const userDocRef = doc(db, "users", user.uid);
+      
+          // Check if the document with the provided UID exists
+          const userDocSnapshot = await getDoc(userDocRef);
+      
+          if (userDocSnapshot.exists()) {
+            // If the document exists, update it
+            await setDoc(userDocRef, userData, { merge: true });
+            console.log("Document updated with ID: ", user.uid);
+          } else {
+            // If the document does not exist, create it
+            await setDoc(userDocRef, userData);
+            console.log("Document created with ID: ", user.uid);
+          }
+      
+          // Store the submitted data and set the form submission flag to true
+          setSubmittedData(userData);
+          setIsFormSubmitted(true); // Set isFormSubmitted to true after successful submission
+          fetchPost();
         } catch (e) {
-            console.error("Error adding document: ", e);
+          console.error("Error adding/updating document: ", e);
         }
-    };
+      };
+      
 
 
 
