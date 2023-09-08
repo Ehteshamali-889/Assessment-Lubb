@@ -101,17 +101,6 @@ function Main() {
                             <div className="form-group">
                                 <input
                                     type="text"
-                                    id="age"
-                                    name="age"
-                                    className="input-field"
-                                    placeholder="Enter Age"
-                                    value={age}
-                                    onChange={(e) => setAge(e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <input
-                                    type="text"
                                     id="username"
                                     name="username"
                                     className="input-field"
@@ -131,16 +120,28 @@ function Main() {
                                     onChange={(e) => setCountry(e.target.value)}
                                 />
                             </div>
+                            <div className="form-group">
+                                <input
+                                    type="text"
+                                    id="age"
+                                    name="age"
+                                    className="input-field"
+                                    placeholder="Enter Age"
+                                    value={age}
+                                    onChange={(e) => setAge(e.target.value)}
+                                />
+                            </div>
                             <button type="submit" className="submit-button" onClick={addTodo}>
                                 Submit
                             </button>
                         </form>
                     ) : (
                         <div className="submitted-data">
-                            <p>Age: {submittedData.age}</p>
-                            <p>Username: {submittedData.username}</p>
-                            <p>Country: {submittedData.country}</p>
+                            <p><strong>Username:</strong>&nbsp; {submittedData.username}</p>
+                            <p><strong>Country:</strong>&nbsp; {submittedData.country}</p>
+                            <p><strong>Age:</strong> &nbsp;{submittedData.age}</p>
                         </div>
+
                     )}
                 </section>
 
