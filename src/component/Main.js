@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 import './Home.css';
 
@@ -27,11 +27,13 @@ import profile1 from '../images/profile-1.jpg';
 import profile2 from '../images/profile-2.jpg';
 import profile3 from '../images/profile-3.jpg';
 
-import { auth, provider } from '../firebase';
+import { auth, provider,db } from '../firebase';
 import { useAuthState } from "react-firebase-hooks/auth";
 
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
+
+import { collection, addDoc } from "firebase/firestore";
 function Main() {
     const [user] = useAuthState(auth);
     const navigate = useNavigate();
@@ -39,6 +41,29 @@ function Main() {
         await signOut(auth);
         navigate("/");
     }
+
+    const [age, setAge] = useState("")
+    const [username, setUserName] = useState("")
+    const [country, setCountry] = useState("")
+
+
+    const addTodo = async (e) => {
+        e.preventDefault();  
+       
+        try {
+            const docRef = await addDoc(collection(db, "users"), {
+              age: age,    
+              username: username,
+              country: country,
+            });
+            console.log("Document written with ID: ", docRef.id);
+          } catch (e) {
+            console.error("Error adding document: ", e);
+          }
+    }
+
+
+
 
     return (
         <>
@@ -57,22 +82,80 @@ function Main() {
 
                     </ul>
                 </section>
-                <section class="forminfo">
-                    <h1 class="headingforminfo">Welcome</h1>
-                    <form class="myForm">
-                        <div class="form-group">
-                            {/* <label for="age">Age:</label> */}
-                            <input type="text" id="age" name="age" class="input-field" placeholder='Enter Age' />
+                {/* <section className="todo-container">
+                    <div className="todo">
+                        <h1 className="header">
+                            Todo-App
+                        </h1>
+
+                        <div>
+
+                            <div>
+                                <input
+                                    type="text"
+                                    placeholder="What do you have to do today?"
+                                    onChange={(e) => setTodo(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="btn-container">
+                                <button
+                                    type="submit"
+                                    className="btn"
+                                    onClick={addTodo}
+                                >
+                                    Submit
+                                </button>
+                            </div>
+
                         </div>
-                        <div class="form-group">
-                            {/* <label for="username">Username:</label> */}
-                            <input type="text" id="username" name="username" class="input-field" placeholder='Enter Username' />
+
+                        <div className="todo-content">
+                            ...
                         </div>
-                        <div class="form-group">
-                            {/* <label for="country">Country:</label> */}
-                            <input type="text" id="country" name="country" class="input-field" placeholder='Enter Country' />
+                    </div>
+                </section> */}
+                <section className="form-container">
+                    <h1 className="form-heading">Welcome</h1>
+                    <form className="myForm">
+                        <div className="form-group">
+                           
+                            <input
+                                type="text"
+                                id="age"
+                                name="age"
+                                className="input-field"
+                                placeholder="Enter Age"
+                                value={age}
+                                onChange={(e) => setAge(e.target.value)}
+                            />
+                            
                         </div>
-                        <button type="submit" class="submit-button">Submit</button>
+                        <div className="form-group">
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                className="input-field"
+                                placeholder="Enter Username"
+                                value={username}
+                                onChange={(e) => setUserName(e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <input
+                                type="text"
+                                id="country"
+                                name="country"
+                                className="input-field"
+                                placeholder="Enter Country"
+                                value={country}
+                                onChange={(e) => setCountry(e.target.value)}
+                            />
+                        </div>
+                        <button type="submit" className="submit-button" onClick={addTodo}>
+                            Submit
+                        </button>
                     </form>
                 </section>
 
