@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 import './Home.css';
 
@@ -33,7 +33,8 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, where, query } from "firebase/firestore";
+
 function Main() {
     const [user] = useAuthState(auth);
     const navigate = useNavigate();
@@ -50,27 +51,79 @@ function Main() {
 
     const addTodo = async (e) => {
         e.preventDefault();
-      
+
         try {
-          const docRef = await addDoc(collection(db, "users"), {
-            age: age,
-            username: username,
-            country: country,
-          });
-          console.log("Document written with ID: ", docRef.id);
-      
-          // Store the submitted data and set the form submission flag to true
-          setSubmittedData({
-            age,
-            username,
-            country,
-          });
-          setIsFormSubmitted(true); // Set isFormSubmitted to true after successful submission
+            const user = auth.currentUser; // Assuming you have an authentication system set up
+            if (!user) {
+                console.error("User is not authenticated");
+                return;
+            }
+
+            const userData = {
+                age: age,
+                username: username,
+                country: country,
+                uid: user.uid, // Add the user's UID to the document data
+            };
+
+            const docRef = await addDoc(collection(db, "users"), userData);
+            console.log("Document written with ID: ", docRef.id);
+
+            // Store the submitted data and set the form submission flag to true
+            setSubmittedData(userData);
+            setIsFormSubmitted(true); // Set isFormSubmitted to true after successful submission
+            fetchPost();
         } catch (e) {
-          console.error("Error adding document: ", e);
+            console.error("Error adding document: ", e);
         }
-      };
-      
+    };
+
+
+
+    const [userData, setUserData] = useState(null);
+
+    const fetchPost = async () => {
+        const user = auth.currentUser;
+        console.log("user", user);
+
+        if (user) {
+            const userUid = user.uid;
+            console.log('userid', userUid);
+
+            const collectionRef = collection(db, "users");
+            console.log("collectionRef", collectionRef);
+
+            // Create a query that filters documents by the user's UID
+            const q = query(collectionRef, where("uid", "==", userUid));
+
+            try {
+                const querySnapshot = await getDocs(q);
+                console.log("queryout", querySnapshot);
+
+                const userData = querySnapshot.docs.map((doc) => {
+                    const data = doc.data();
+                    return { ...data, id: doc.id };
+                });
+
+                console.log("User Data:", userData);
+
+                // Update your state or do something with the user's data
+                setUserData(userData);
+            } catch (error) {
+                console.error("Error fetching data: ", error);
+            }
+        }
+    };
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -136,13 +189,21 @@ function Main() {
                             </button>
                         </form>
                     ) : (
-                        <div className="submitted-data">
-                            <p><strong>Username:</strong>&nbsp; {submittedData.username}</p>
-                            <p><strong>Country:</strong>&nbsp; {submittedData.country}</p>
-                            <p><strong>Age:</strong> &nbsp;{submittedData.age}</p>
-                        </div>
+                        ""
 
                     )}
+                    {userData ? (
+                        userData.map((user) => (
+                            <div className="submitted-data" key={user.id}>
+                                <p><strong>Username:</strong>&nbsp; {user.username}</p>
+                                <p><strong>Country:</strong>&nbsp; {user.country}</p>
+                                <p><strong>Age:</strong> &nbsp;{user.age}</p>
+                            </div>
+                        ))
+                    ) : (
+                        <p>No user data available.</p>
+                    )}
+
                 </section>
 
 
