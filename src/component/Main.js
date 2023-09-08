@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-
+import toast, { Toaster } from 'react-hot-toast';
 import './Home.css';
 
 import logo from '../images/logo.svg';
@@ -33,7 +33,8 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
-import { collection, addDoc, getDocs, where, query,doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, where, query, doc, getDoc, setDoc ,deleteDoc} from "firebase/firestore";
+
 
 function Main() {
     const [user] = useAuthState(auth);
@@ -43,187 +44,184 @@ function Main() {
         navigate("/");
     }
 
-    const [age, setAge] = useState("")
-    const [username, setUserName] = useState("")
-    const [country, setCountry] = useState("")
-    const [isFormSubmitted, setIsFormSubmitted] = useState(false);
-    const [submittedData, setSubmittedData] = useState(null); // To store the submitted data
+    const [age, setAge] = useState("");
+    const [username, setUserName] = useState("");
+    const [country, setCountry] = useState("");
+    const [userData, setUserData] = useState([]);
+    const [isLoading, setIsLoading] = useState(true); // Add loading state
 
-    const addTodo = async (e) => {
-        e.preventDefault();
-      
-        try {
-          const user = auth.currentUser; // Assuming you have an authentication system set up
-          if (!user) {
-            console.error("User is not authenticated");
-            return;
-          }
-      
-          const userData = {
-            age: age,
-            username: username,
-            country: country,
-            uid: user.uid, // Add the user's UID to the document data
-          };
-      
-          // Reference to the document based on the user's UID
-          const userDocRef = doc(db, "users", user.uid);
-      
-          // Check if the document with the provided UID exists
-          const userDocSnapshot = await getDoc(userDocRef);
-      
-          if (userDocSnapshot.exists()) {
-            // If the document exists, update it
-            await setDoc(userDocRef, userData, { merge: true });
-            console.log("Document updated with ID: ", user.uid);
-          } else {
-            // If the document does not exist, create it
-            await setDoc(userDocRef, userData);
-            console.log("Document created with ID: ", user.uid);
-          }
-      
-          // Store the submitted data and set the form submission flag to true
-          setSubmittedData(userData);
-          setIsFormSubmitted(true); // Set isFormSubmitted to true after successful submission
-          fetchPost();
-        } catch (e) {
-          console.error("Error adding/updating document: ", e);
-        }
-      };
-      
+    useEffect(() => {
+        // Set isLoading to true when fetching data starts
+        setIsLoading(true);
 
+        fetchUserData()
+            .then(() => {
+                // Set isLoading to false when data fetching is complete
+                setIsLoading(false);
+            });
+    }, [user]);
 
-
-    const [userData, setUserData] = useState(null);
-
-    const fetchPost = async () => {
-        const user = auth.currentUser;
-        console.log("user", user);
-
+    const fetchUserData = async () => {
         if (user) {
             const userUid = user.uid;
-            console.log('userid', userUid);
-
             const collectionRef = collection(db, "users");
-            console.log("collectionRef", collectionRef);
-
-            // Create a query that filters documents by the user's UID
             const q = query(collectionRef, where("uid", "==", userUid));
 
             try {
                 const querySnapshot = await getDocs(q);
-                console.log("queryout", querySnapshot);
 
-                const userData = querySnapshot.docs.map((doc) => {
-                    const data = doc.data();
-                    return { ...data, id: doc.id };
-                });
-
-                console.log("User Data:", userData);
-
-                // Update your state or do something with the user's data
-                setUserData(userData);
+                if (querySnapshot.empty) {
+                    // No user-specific data found, so clear the userData state
+                    setUserData([]);
+                } else {
+                    // User-specific data found, fetch and set it
+                    const userData = querySnapshot.docs.map((doc) => {
+                        const data = doc.data();
+                        return { ...data, id: doc.id };
+                    });
+                    setUserData(userData);
+                }
             } catch (error) {
                 console.error("Error fetching data: ", error);
             }
         }
     };
 
+    const addUserInfo = async (e) => {
+        e.preventDefault();
 
+        try {
+            const user = auth.currentUser;
+            if (!user) {
+                console.error("User is not authenticated");
+                return;
+            }
 
+            const userData = {
+                age: age,
+                username: username,
+                country: country,
+                uid: user.uid,
+            };
 
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnapshot = await getDoc(userDocRef);
 
+            if (userDocSnapshot.exists()) {
+                await setDoc(userDocRef, userData, { merge: true });
+                console.log("Document updated with ID: ", user.uid);
+            } else {
+                await setDoc(userDocRef, userData);
+                console.log("Document created with ID: ", user.uid);
+            }
+            toast.success('Successfully Added User Info!')
+            fetchUserData();
+        } catch (e) {
+            console.error("Error adding/updating document: ", e);
+        }
+    };
 
+    const deleteUser = async (userId) => {
+        try {
+            // Delete user data from Firestore collection
+            await deleteDoc(doc(db, "users", userId));
+    
+            // Delete the user account from Firebase Authentication
+            await auth.currentUser.delete();
+    
+            // Log the user out
+            await signOut(auth);
+            toast.success('User Deleted Successfully!')
+            // Navigate to the home page ("/")
+            setTimeout(() => {
+            navigate("/");
+            }, 1000);
 
-
-
-
-
-
-
+        } catch (error) {
+            console.error("Error deleting user: ", error);
+            toast.error('Error deleting user account and data.');
+        }
+    };
+    
 
     return (
         <>
             <main>
+                <Toaster />
                 <section className="header">
                     <img src={logo} alt="Logo" />
                     <ul className="nav">
                         {user ? (
                             <>
                                 <li>{user.displayName}</li>
-                                {/* <li>{user.email}</li> */}
                                 <li className='signin' onClick={logout}>Logout</li>
                             </>
-
                         ) : ("")}
-
                     </ul>
                 </section>
                 <section className="form-container">
                     <h1 className="form-heading">Welcome</h1>
-
-                    {/* Conditionally render the form or the submitted data */}
-                    {!isFormSubmitted ? (
-                        <form className="myForm">
-                            <div className="form-group">
-                                <input
-                                    type="text"
-                                    id="username"
-                                    name="username"
-                                    className="input-field"
-                                    placeholder="Enter Username"
-                                    value={username}
-                                    onChange={(e) => setUserName(e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <input
-                                    type="text"
-                                    id="country"
-                                    name="country"
-                                    className="input-field"
-                                    placeholder="Enter Country"
-                                    value={country}
-                                    onChange={(e) => setCountry(e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <input
-                                    type="text"
-                                    id="age"
-                                    name="age"
-                                    className="input-field"
-                                    placeholder="Enter Age"
-                                    value={age}
-                                    onChange={(e) => setAge(e.target.value)}
-                                />
-                            </div>
-                            <button type="submit" className="submit-button" onClick={addTodo}>
-                                Submit
-                            </button>
-                        </form>
+                    {isLoading ? ( // Conditional rendering based on isLoading
+                        <div className="loader">
+                            Loading...
+                        </div>
                     ) : (
-                        ""
-
+                        userData.length > 0 ? (
+                            userData.map((user) => (
+                                <div className="submitted-data" key={user.id}>
+                                    <p><strong>Username:</strong>&nbsp; {user.username}</p>
+                                    <p><strong>Country:</strong>&nbsp; {user.country}</p>
+                                    <p><strong>Age:</strong> &nbsp;{user.age}</p>
+                                    <button
+                                        className="delete-button"
+                                        onClick={() => deleteUser(user.id)}
+                                    >
+                                        Delete Account
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <form className="myForm">
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        id="username"
+                                        name="username"
+                                        className="input-field"
+                                        placeholder="Enter Username"
+                                        value={username}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        id="country"
+                                        name="country"
+                                        className="input-field"
+                                        placeholder="Enter Country"
+                                        value={country}
+                                        onChange={(e) => setCountry(e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        id="age"
+                                        name="age"
+                                        className="input-field"
+                                        placeholder="Enter Age"
+                                        value={age}
+                                        onChange={(e) => setAge(e.target.value)}
+                                    />
+                                </div>
+                                <button type="submit" className="submit-button" onClick={addUserInfo}>
+                                    Submit
+                                </button>
+                            </form>
+                        )
                     )}
-                    {userData ? (
-                        userData.map((user) => (
-                            <div className="submitted-data" key={user.id}>
-                                <p><strong>Username:</strong>&nbsp; {user.username}</p>
-                                <p><strong>Country:</strong>&nbsp; {user.country}</p>
-                                <p><strong>Age:</strong> &nbsp;{user.age}</p>
-                            </div>
-                        ))
-                    ) : (
-                        <p>No user data available.</p>
-                    )}
-
                 </section>
-
-
-
-
-
                 <section className="footer">
                     <section>
                         <img src={logo} alt="Logo" className="footericon" />
@@ -270,7 +268,11 @@ function Main() {
                 </section>
             </main>
         </>
-    )
+    );
 }
+
+
+
+
 
 export default Main
